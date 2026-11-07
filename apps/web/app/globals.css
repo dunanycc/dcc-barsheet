@@ -1347,3 +1347,8 @@ input[type="checkbox"] { accent-color: var(--dcc-green); min-height: 1.25rem; mi
   .notification-entry dt { color: var(--muted); font-size: .66rem; font-weight: 800; text-transform: uppercase; }
   .notification-entry dd { font-size: .78rem; margin: .1rem 0 0; overflow-wrap: anywhere; }
 }
+
+.user-group { margin-top: 1.5rem; }
+.user-group h2 { font-size: 1.1rem; margin-bottom: .65rem; }
+.trash-button { display: inline-flex; align-items: center; justify-content: center; min-width: 2.25rem; }
+.users-table td[data-label="Email"] { overflow-wrap: anywhere; }

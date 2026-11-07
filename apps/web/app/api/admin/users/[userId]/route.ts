@@ -1,3 +1,4 @@
+import { deleteHiddenUser, UserDeletionError } from "../../../../../lib/delete-hidden-user";
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "../../../../generated/prisma/client";
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ u
         return tx.user.findUniqueOrThrow({where:{id:userId}});
       }
       const activeAdminCount = await tx.user.count({ where: {
-        role: "ADMIN", status: { in: ["APPROVED", "ACTIVE"] },
+        hiddenAt: null, role: "ADMIN", status: { in: ["APPROVED", "ACTIVE"] },
       }});
       assertLastAdminSafe({
         targetIsActiveAdmin: target.role === "ADMIN" && ["APPROVED", "ACTIVE"].includes(target.status),
@@ -44,7 +45,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ u
         : action === "unhide"
           ? { hiddenAt: null }
           : action === "disable"
-        ? { status: "DISABLED" as const, disabledAt: new Date(), disabledReason: body?.reason?.trim() || null }
+        ? { status: "DISABLED" as const, disabledAt: new Date(), disabledReason: body?.reason?.trim() || null, authVersion: { increment: 1 } }
         : action === "enable"
           ? { status: "APPROVED" as const, disabledAt: null, disabledReason: null }
           : action === "grant_admin"
@@ -74,5 +75,27 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ u
     if (code === "INVALID") return NextResponse.json({ error: "Enter a valid name and email." }, { status: 400 });
     console.error(error);
     return NextResponse.json({ error: "Could not update the user." }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
+  const access = await authorizeAdminRequest();
+  if (!access.ok) return access.response;
+  const { userId } = await context.params;
+  const body = await request.json().catch(() => null);
+  if (body?.confirmUserId !== userId) return NextResponse.json({ error: "Confirm the user to permanently delete." }, { status: 400 });
+  try {
+    await prisma.$transaction(tx => deleteHiddenUser(tx, userId, access.user.id), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    return NextResponse.json({ deleted: true });
+  } catch (error) {
+    if (error instanceof UserDeletionError) {
+      const messages: Record<string, string> = {
+        NOT_FOUND: "User not found.", NOT_HIDDEN: "Move the user to Hidden users before permanently deleting them.",
+        SELF_DELETE: "You cannot delete your own account.", LAST_ACTIVE_ADMIN: "The last active administrator cannot be deleted.",
+      };
+      return NextResponse.json({ error: messages[error.message] }, { status: error.message === "NOT_FOUND" ? 404 : 409 });
+    }
+    console.error(error);
+    return NextResponse.json({ error: "Could not delete the user. No changes were saved. Please try again." }, { status: 500 });
   }
 }
