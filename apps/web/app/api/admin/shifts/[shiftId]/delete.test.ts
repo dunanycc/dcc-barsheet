@@ -42,10 +42,9 @@ describe("delete a time slot", () => {
 describe("shift-deletion notification preview", () => {
   it("lists current assigned names without duplicates", async () => {
     mocks.authorize.mockResolvedValue({ ok: true });
-    mocks.findShift.mockResolvedValue({ assignments: [{ enteredName: "Jane Smith" }, { enteredName: "Alex Green" }, { enteredName: "Jane Smith" }] });
+    mocks.findShift.mockResolvedValue({ assignments: [{ enteredName: "Jane Smith", user: { firstName: "Jane", normalizedEmail: "jane@example.com" } }, { enteredName: "Alex Green", user: { firstName: "Alex", normalizedEmail: "alex@example.com" } }, { enteredName: "Jane Smith", user: { firstName: "Jane", normalizedEmail: "jane@example.com" } }] });
     const response = await GET(request(), context);
-    expect(await response.json()).toEqual({ notificationNames: ["Jane Smith", "Alex Green"] });
-    expect(mocks.findShift).toHaveBeenCalledWith(expect.objectContaining({ select: { assignments: { where: { status: "ACTIVE", userId: { not: null } }, select: { enteredName: true } } } }));
+    expect(await response.json()).toEqual({ notificationNames: ["Jane Smith", "Alex Green"], unmatchedNames: [] });
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
   it("denies non-admin access to recipient names", async () => {

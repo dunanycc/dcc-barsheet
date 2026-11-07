@@ -1,3 +1,4 @@
+import { shiftNotificationRecipients } from "../../../../../lib/shift-notification-recipients";
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeAdminRequest } from "../../../../../lib/authorization";
@@ -14,10 +15,11 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ sh
   const { shiftId } = await context.params;
   try {
     const shift = await prisma.shift.findUnique({ where: { id: shiftId }, select: {
-      assignments: { where: { status: "ACTIVE", userId: { not: null } }, select: { enteredName: true } },
+      assignments: { where: { status: "ACTIVE" }, include: { user: { select: { firstName: true, normalizedEmail: true } }, volunteerProfile: { include: { user: { select: { firstName: true, normalizedEmail: true } } } } } },
     } });
     if (!shift) return NextResponse.json({ error: "Time slot not found." }, { status: 404 });
-    return NextResponse.json({ notificationNames: [...new Set(shift.assignments.map(a => a.enteredName))] }, { headers: { "Cache-Control": "no-store" } });
+    const { notificationNames, unmatchedNames } = await shiftNotificationRecipients(shift.assignments, () => prisma.volunteerProfile.findMany({ where: { active: true, user: { hiddenAt: null, status: { in: ["APPROVED", "ACTIVE"] } } }, include: { user: { select: { firstName: true, normalizedEmail: true } } } }));
+    return NextResponse.json({ notificationNames, unmatchedNames }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Could not load the volunteers to notify. Please try again." }, { status: 500 });
@@ -101,7 +103,7 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       const shift = await tx.shift.findUnique({ where: { id: shiftId }, include: {
         event: { select: { id: true, name: true, date: true } },
-        assignments: { include: { user: { select: { firstName: true, normalizedEmail: true } } } },
+        assignments: { include: { user: { select: { firstName: true, normalizedEmail: true } }, volunteerProfile: { include: { user: { select: { firstName: true, normalizedEmail: true } } } } } },
       } });
       if (!shift) throw new Error("NOT_FOUND");
       // Keep an audit snapshot before removing the slot and its signup rows.
@@ -117,8 +119,8 @@ export async function DELETE(
       await tx.shiftAssignment.updateMany({ where: { replacedAssignmentId: { in: assignmentIds } }, data: { replacedAssignmentId: null } });
       await tx.shiftAssignment.deleteMany({ where: { shiftId } });
       await tx.shift.delete({ where: { id: shiftId } });
-      const recipients = new Map(shift.assignments.filter(a => a.status === "ACTIVE" && a.user).map(a => [a.user!.normalizedEmail, a.user!]));
-      if (recipients.size) await tx.notification.createMany({ data: [...recipients.values()].map(user => ({
+      const { recipients } = await shiftNotificationRecipients(shift.assignments, () => tx.volunteerProfile.findMany({ where: { active: true, user: { hiddenAt: null, status: { in: ["APPROVED", "ACTIVE"] } } }, include: { user: { select: { firstName: true, normalizedEmail: true } } } }));
+      if (recipients.length) await tx.notification.createMany({ data: recipients.map(user => ({
         operationId, type: "ASSIGNMENT_REMOVED" as const, recipientEmail: user.normalizedEmail,
         payload: { firstName: user.firstName, eventName: shift.event.name, eventDate: shift.event.date.toISOString().slice(0, 10), shiftTime: shift.displayTime, actorName: displayName(access.user) },
         relatedEntityType: "Shift", relatedEntityId: shiftId, eventId: shift.eventId,

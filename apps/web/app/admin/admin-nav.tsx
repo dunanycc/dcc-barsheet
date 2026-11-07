@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { defaultScheduleYear } from "../../lib/default-schedule-year";
 
 const items = [
   { href: "/admin", label: "Schedule", match: (path: string) => path === "/admin" },
@@ -25,20 +27,23 @@ export default function AdminNav() {
   })}{pathname === "/admin" && <AdminScheduleYearPicker />}</nav>;
 }
 
-function AdminScheduleYearPicker() {
+export function AdminScheduleYearPicker() {
   const [years, setYears] = useState<number[]>([]);
   const [value, setValue] = useState("");
+  const synchronized = useRef(false);
 
   useEffect(() => {
     void fetch("/api/admin/schedule", { cache: "no-store" }).then(async (response) => {
       if (!response.ok) return;
       const payload = await response.json();
       const available = [...new Set<number>((payload.events || []).map((event: { date: string }) => Number(event.date.slice(0, 4))))].sort((a, b) => a - b);
-      const currentYear = new Date().getFullYear();
-      setYears(available);
-      setValue(String(available.includes(currentYear) ? currentYear : available.at(-1) || ""));
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const currentYear = Number(today.slice(0, 4));
+      setYears([...new Set([currentYear, ...available])].sort((a, b) => a - b));
+      if (!synchronized.current) setValue(defaultScheduleYear(payload.events || [], today));
     });
     const sync = (event: Event) => {
+      synchronized.current = true;
       const detail = (event as CustomEvent<number | "All Years">).detail;
       setValue(detail === "All Years" ? "all" : String(detail));
     };
@@ -54,7 +59,11 @@ function AdminScheduleYearPicker() {
   return <label className="schedule-year-picker nav-year-picker"><span className="sr-only">Schedule year</span><select aria-label="Schedule year" onChange={(event) => {
     const next = event.target.value;
     if (next === "create") window.dispatchEvent(new Event("admin-create-year"));
-    else window.dispatchEvent(new CustomEvent("admin-schedule-year-select", { detail: next }));
+    else {
+      synchronized.current = true;
+      setValue(next);
+      window.dispatchEvent(new CustomEvent("admin-schedule-year-select", { detail: next }));
+    }
   }} value={value}>
     <option value="all">All years</option>
     {years.map((year) => <option key={year} value={year}>{year}</option>)}

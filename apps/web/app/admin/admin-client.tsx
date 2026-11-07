@@ -471,7 +471,9 @@ export default function AdminClient({ initialTab = "schedule" }: { initialTab?: 
       const notificationMessage = names.length
         ? `The following volunteers will be notified by email:\n${names.map(name => `• ${name}`).join("\n")}`
         : "No volunteers will be notified by email.";
-      if (!window.confirm(`Delete this time slot and its volunteer signups? The row will be removed from the schedule. History will be preserved.\n\n${notificationMessage}`)) return;
+      const unmatched: string[] = preview.unmatchedNames || [];
+      const unmatchedMessage = unmatched.length ? `\n\nNo unique approved email account was found for:\n${unmatched.map(name => `• ${name}`).join("\n")}` : "";
+      if (!window.confirm(`Delete this time slot and its volunteer signups? The row will be removed from the schedule. History will be preserved.\n\n${notificationMessage}${unmatchedMessage}`)) return;
       await adminFetch(`/api/admin/shifts/${shiftId}`, { method: "DELETE" });
       setNotice("Slot deleted.");
       await reload();
