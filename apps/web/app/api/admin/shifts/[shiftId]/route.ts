@@ -122,7 +122,7 @@ export async function DELETE(
       const { recipients } = await shiftNotificationRecipients(shift.assignments, () => tx.volunteerProfile.findMany({ where: { active: true, user: { hiddenAt: null, status: { in: ["APPROVED", "ACTIVE"] } } }, include: { user: { select: { firstName: true, normalizedEmail: true } } } }));
       if (recipients.length) await tx.notification.createMany({ data: recipients.map(user => ({
         operationId, type: "ASSIGNMENT_REMOVED" as const, recipientEmail: user.normalizedEmail,
-        payload: { firstName: user.firstName, eventName: shift.event.name, eventDate: shift.event.date.toISOString().slice(0, 10), shiftTime: shift.displayTime, actorName: displayName(access.user) },
+        payload: { shiftCancelled: true, firstName: user.firstName, eventName: shift.event.name, eventDate: shift.event.date.toISOString().slice(0, 10), shiftTime: shift.displayTime, actorName: displayName(access.user) },
         relatedEntityType: "Shift", relatedEntityId: shiftId, eventId: shift.eventId,
       })) });
       await queueAdministratorNotification(tx, { operationId, subject: "Time slot deleted", message: `${shift.displayTime} was deleted from ${shift.event.name}.`, eventId: shift.eventId, relatedEntityType: "Shift", relatedEntityId: shiftId });

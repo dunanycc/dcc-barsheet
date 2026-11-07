@@ -63,3 +63,23 @@ describe("notification integration and authorization surface", () => {
     expect(cron).toContain("CRON_SECRET"); expect(cron).toContain("failedOnly: true");
   });
 });
+
+
+describe("shift cancellation email wording", () => {
+  it("clearly describes the cancelled shift and thanks the volunteer", () => {
+    const email = renderNotification("ASSIGNMENT_REMOVED", { shiftCancelled: true, firstName: "Jayem", eventName: "Car Rally", eventDate: "2027-10-09", shiftTime: "11pm–Closing" });
+    expect(email.subject).toBe("Your DCC Bar Schedule shift has been cancelled");
+    for (const body of [email.text, email.html]) {
+      expect(body).toContain("An administrator has cancelled the shift listed below.");
+      expect(body).toContain("Thank you for volunteering!");
+      expect(body).toContain("Car Rally");
+      expect(body).toContain("11pm–Closing");
+      expect(body).not.toContain("A volunteer has been removed");
+    }
+  });
+  it("retains assignment removal wording when the shift was not cancelled", () => {
+    const email = renderNotification("ASSIGNMENT_REMOVED", { volunteerName: "Jane Smith" });
+    expect(email.subject).toContain("assignment was removed");
+    expect(email.text).toContain("Jane Smith has been removed");
+  });
+});
