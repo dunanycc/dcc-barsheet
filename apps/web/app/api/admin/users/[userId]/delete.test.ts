@@ -27,6 +27,6 @@ describe("hidden user DELETE boundary", () => {
     mocks.transaction.mockImplementation(async callback => callback(tx));
     expect((await DELETE(request({ confirmUserId: "test-user" }), context)).status).toBe(200);
     expect(mocks.remove).toHaveBeenCalledWith(tx, "test-user", "admin");
-    expect(mocks.transaction.mock.calls[0][1]).toEqual({ isolationLevel: "Serializable" });
+    expect(mocks.transaction.mock.calls[0][1]).toEqual({ isolationLevel: "Serializable", maxWait: 5000, timeout: 30000 });
   });
 });

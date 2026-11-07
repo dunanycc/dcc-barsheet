@@ -17,12 +17,31 @@ export async function deleteHiddenUser(tx: Prisma.TransactionClient, userId: str
   const requests = await tx.accessRequest.findMany({ where: { OR: [{ approvedUserId: userId }, { normalizedEmail: target.normalizedEmail }] }, select: { id: true } });
   const ids = [userId, ...profiles.map(p => p.id), ...assignments.map(a => a.id), ...requests.map(r => r.id)];
 
-  // Include IDs embedded in audit snapshots and notification payloads.
-  for (const id of [...ids, target.normalizedEmail]) {
-    await tx.$executeRaw`DELETE FROM "AuditEvent" WHERE "actorUserId" = ${userId} OR "entityId" = ${id} OR strpos("previousData"::text, ${id}) > 0 OR strpos("newData"::text, ${id}) > 0 OR strpos("details"::text, ${id}) > 0`;
-    await tx.$executeRaw`DELETE FROM "Notification" WHERE "recipientEmail" = ${target.normalizedEmail} OR "relatedEntityId" = ${id} OR strpos("payload"::text, ${id}) > 0`;
-  }
-  await tx.auditEvent.deleteMany({ where: { actorEmailSnapshot: target.normalizedEmail } });
+  // The trigger permits only related audit deletions for this hidden account.
+  // This setting expires automatically on commit or rollback.
+  await tx.$queryRaw`SELECT set_config('app.hidden_user_cleanup_id', ${userId}, true)`;
+
+  // Match related IDs in one scan per table instead of two round trips per ID.
+  const references = Prisma.sql`ARRAY[${Prisma.join([...ids, target.normalizedEmail])}]::text[]`;
+  await tx.$executeRaw`
+    DELETE FROM "AuditEvent" AS audit
+    WHERE audit."actorUserId" = ${userId}
+       OR audit."actorEmailSnapshot" = ${target.normalizedEmail}
+       OR EXISTS (
+         SELECT 1 FROM unnest(${references}) AS ref(value)
+         WHERE audit."entityId" = ref.value
+            OR strpos(audit."previousData"::text, ref.value) > 0
+            OR strpos(audit."newData"::text, ref.value) > 0
+            OR strpos(audit."details"::text, ref.value) > 0
+       )`;
+  await tx.$executeRaw`
+    DELETE FROM "Notification" AS notification
+    WHERE notification."recipientEmail" = ${target.normalizedEmail}
+       OR EXISTS (
+         SELECT 1 FROM unnest(${references}) AS ref(value)
+         WHERE notification."relatedEntityId" = ref.value
+            OR strpos(notification."payload"::text, ref.value) > 0
+       )`;
   await tx.shiftAssignment.updateMany({ where: { replacedAssignmentId: { in: assignments.map(a => a.id) } }, data: { replacedAssignmentId: null } });
   await tx.shiftAssignment.deleteMany({ where: { id: { in: assignments.map(a => a.id) } } });
   // Preserve other volunteers' assignments and approvals when this user was their creator.

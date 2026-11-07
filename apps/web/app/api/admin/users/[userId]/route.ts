@@ -85,7 +85,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   const body = await request.json().catch(() => null);
   if (body?.confirmUserId !== userId) return NextResponse.json({ error: "Confirm the user to permanently delete." }, { status: 400 });
   try {
-    await prisma.$transaction(tx => deleteHiddenUser(tx, userId, access.user.id), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    await prisma.$transaction(tx => deleteHiddenUser(tx, userId, access.user.id), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 5000, timeout: 30000 });
     return NextResponse.json({ deleted: true });
   } catch (error) {
     if (error instanceof UserDeletionError) {
@@ -94,6 +94,9 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         SELF_DELETE: "You cannot delete your own account.", LAST_ACTIVE_ADMIN: "The last active administrator cannot be deleted.",
       };
       return NextResponse.json({ error: messages[error.message] }, { status: error.message === "NOT_FOUND" ? 404 : 409 });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2028", "P2034"].includes(error.code)) {
+      return NextResponse.json({ error: "User cleanup timed out or conflicted with another change. No changes were saved. Please try again." }, { status: 409 });
     }
     console.error(error);
     return NextResponse.json({ error: "Could not delete the user. No changes were saved. Please try again." }, { status: 500 });
