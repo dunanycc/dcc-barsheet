@@ -22,10 +22,10 @@ export function adminNavigation(pathname: string) {
 
 export default function AdminNav() {
   const pathname = usePathname();
-  return <nav aria-label="Administration" className="admin-nav">{adminNavigation(pathname).map((item) => {
+  return <nav aria-label="Administration" className="admin-nav"><div className="admin-nav-links">{adminNavigation(pathname).map((item) => {
     const active = item.active;
     return <Link aria-current={active ? "page" : undefined} className={`admin-nav-link${active ? " active" : ""}`} href={item.href} key={item.href}>{item.label}</Link>;
-  })}{pathname === "/admin" && <AdminScheduleYearPicker />}</nav>;
+  })}</div>{pathname === "/admin" && <AdminScheduleYearPicker />}</nav>;
 }
 
 export function AdminScheduleYearPicker() {

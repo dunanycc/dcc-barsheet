@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "DCC Bar Schedule",
-  description: "DCC bartending, sales, and inventory application",
+  description: "Volunteer bar scheduling for Dunany Country Club",
   applicationName: "DCC Bar Schedule",
   manifest: "/manifest.webmanifest",
   icons: {
