@@ -1,5 +1,7 @@
 "use client";
 
+import { defaultScheduleYear } from "../lib/default-schedule-year";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -228,9 +230,7 @@ export default function ScheduleClient({ isAdmin = false }: { isAdmin?: boolean 
       setEvents(nextEvents);
       setSelectedScheduleYear((current) => {
         if (current) return current;
-        const availableYears = [...new Set(nextEvents.map((event) => event.date.slice(0, 4)))].sort();
-        const calendarYear = todayIso().slice(0, 4);
-        const initialYear = availableYears.includes(calendarYear) ? calendarYear : availableYears.at(-1) || calendarYear;
+        const initialYear = defaultScheduleYear(nextEvents, todayIso());
         if (isAdmin) window.dispatchEvent(new CustomEvent("schedule-year-change", { detail: Number(initialYear) }));
         return initialYear;
       });
@@ -313,8 +313,8 @@ export default function ScheduleClient({ isAdmin = false }: { isAdmin?: boolean 
     }
   }
 
-  const availableYears = useMemo(() => [...new Set(events.map((event) => event.date.slice(0, 4)))].sort(), [events]);
-  const scheduleYearForView = selectedScheduleYear || (availableYears.includes(todayIso().slice(0, 4)) ? todayIso().slice(0, 4) : availableYears.at(-1) || todayIso().slice(0, 4));
+  const availableYears = useMemo(() => [...new Set([todayIso().slice(0, 4), ...events.map((event) => event.date.slice(0, 4))])].sort(), [events]);
+  const scheduleYearForView = selectedScheduleYear || defaultScheduleYear(events, todayIso());
 
   const volunteerNames = useMemo(() => {
     const names = new Set<string>();

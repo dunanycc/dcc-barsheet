@@ -2,7 +2,7 @@ export type HistoryCategory = "all" | "users" | "schedule" | "signins";
 
 export const HISTORY_ACTIONS = {
   users: ["USER_ACTIVATED", "ACCESS_REQUESTED", "ACCESS_APPROVED", "ACCESS_REJECTED", "USER_DISABLED", "USER_ENABLED", "ADMIN_GRANTED", "ADMIN_REMOVED"],
-  schedule: ["SIGNUP_ADD", "SIGNUP_REMOVE", "SIGNUP_REPLACE", "EVENT_CREATE", "EVENT_UPDATE", "EVENT_CANCEL", "EVENT_CLONE", "SHIFT_CREATE", "SHIFT_UPDATE", "SHIFT_CLOSE", "SCHEDULE_CLONED", "SCHEDULE_REPLACED", "SCHEDULE_YEAR_REMOVED", "SETTINGS_UPDATE"],
+  schedule: ["SIGNUP_ADD", "SIGNUP_REMOVE", "SIGNUP_REPLACE", "EVENT_CREATE", "EVENT_UPDATE", "EVENT_CANCEL", "EVENT_CLONE", "SHIFT_CREATE", "SHIFT_UPDATE", "SHIFT_CLOSE", "SHIFT_DELETE", "SCHEDULE_CLONED", "SCHEDULE_REPLACED", "SCHEDULE_YEAR_REMOVED", "SETTINGS_UPDATE"],
   signins: ["LOGIN_GOOGLE", "LOGIN_YAHOO", "LOGIN_EMAIL", "LOGIN_REJECTED"],
 } as const;
 
@@ -52,7 +52,7 @@ export function describeAuditEvent(input: DescriptionInput) {
     SIGNUP_REPLACE: `${actor} replaced ${target} for ${scheduleSlot}`, EVENT_CREATE: `${actor} created ${event}`,
     EVENT_UPDATE: `${actor} updated ${event}`, EVENT_CANCEL: `${actor} cancelled ${event}`,
     EVENT_CLONE: `${actor} cloned ${event}`, SHIFT_CREATE: `${actor} added ${shift} to ${event}`,
-    SHIFT_UPDATE: `${actor} updated ${shift} for ${event}`, SHIFT_CLOSE: `${actor} closed ${shift} for ${event}`,
+    SHIFT_UPDATE: `${actor} updated ${shift} for ${event}`, SHIFT_CLOSE: `${actor} closed ${shift} for ${event}`, SHIFT_DELETE: `${actor} deleted ${shift} for ${event}`,
     SCHEDULE_CLONED: `${actor} created a new schedule year`, SCHEDULE_REPLACED: `${actor} imported and replaced the schedule`,
     SCHEDULE_YEAR_REMOVED: `${actor} removed a schedule year`,
     SETTINGS_UPDATE: `${actor} updated notification settings`, BOOTSTRAP_ADMIN: `${target} was configured as an administrator`,

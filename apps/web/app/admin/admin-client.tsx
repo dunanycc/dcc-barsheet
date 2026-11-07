@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { defaultScheduleYear } from "../../lib/default-schedule-year";
 import { STANDARD_SLOTS } from "../../lib/slot-time";
 import { nearestMatchingWeekday } from "../../lib/schedule-year-date";
 import NotificationPanel from "./settings/notification-panel";
@@ -195,10 +196,9 @@ export default function AdminClient({ initialTab = "schedule" }: { initialTab?: 
   }, []);
 
   useEffect(() => {
-    const scheduleYears = [...new Set(events.map((event) => Number(event.date.slice(0, 4))))].sort((a, b) => a - b);
+    const scheduleYears = [...new Set([Number(todayIso().slice(0, 4)), ...events.map((event) => Number(event.date.slice(0, 4)))])].sort((a, b) => a - b);
     window.dispatchEvent(new CustomEvent("schedule-years-change", { detail: scheduleYears }));
-    const currentYear = Number(todayIso().slice(0, 4));
-    const headerYear = selectedYear ?? (scheduleYears.includes(currentYear) ? currentYear : scheduleYears.at(-1));
+    const headerYear = selectedYear ?? Number(defaultScheduleYear(events, todayIso()));
     if (showAllYears) window.dispatchEvent(new CustomEvent("schedule-year-change", { detail: "All Years" }));
     else if (headerYear) window.dispatchEvent(new CustomEvent("schedule-year-change", { detail: headerYear }));
   }, [events, selectedYear, showAllYears]);
@@ -464,9 +464,14 @@ export default function AdminClient({ initialTab = "schedule" }: { initialTab?: 
   }
 
   async function handleDeleteSlot(shiftId: string) {
-    if (!window.confirm("Delete this time slot?")) return;
     setBusy(`delete-shift-${shiftId}`);
     try {
+      const preview = await adminFetch(`/api/admin/shifts/${shiftId}`, { cache: "no-store" });
+      const names: string[] = preview.notificationNames;
+      const notificationMessage = names.length
+        ? `The following volunteers will be notified by email:\n${names.map(name => `• ${name}`).join("\n")}`
+        : "No volunteers will be notified by email.";
+      if (!window.confirm(`Delete this time slot and its volunteer signups? The row will be removed from the schedule. History will be preserved.\n\n${notificationMessage}`)) return;
       await adminFetch(`/api/admin/shifts/${shiftId}`, { method: "DELETE" });
       setNotice("Slot deleted.");
       await reload();
@@ -646,12 +651,7 @@ export default function AdminClient({ initialTab = "schedule" }: { initialTab?: 
   }
 
   const today = todayIso();
-  const years = [...new Set(events.map((event) => Number(event.date.slice(0, 4))))].sort(
-    (a, b) => a - b,
-  );
-  const currentCalendarYear = Number(today.slice(0, 4));
-  const effectiveYear =
-    selectedYear ?? (years.includes(currentCalendarYear) ? currentCalendarYear : years[years.length - 1]);
+  const effectiveYear = selectedYear ?? Number(defaultScheduleYear(events, today));
   const yearEvents = showAllYears ? events : events.filter((event) => Number(event.date.slice(0, 4)) === effectiveYear);
   const visibleEvents = yearEvents.filter((event) => showPast || event.date >= today);
   const groups = groupByMonth(visibleEvents);
