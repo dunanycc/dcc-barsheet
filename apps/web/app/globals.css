@@ -1355,3 +1355,13 @@ input[type="checkbox"] { accent-color: var(--dcc-green); min-height: 1.25rem; mi
 
 .user-edit-actions { display: flex; flex-wrap: wrap; align-items: center; width: 100%; }
 .user-edit-spacer { flex: 1; }
+
+.email-compose { display: grid; gap: 1rem; max-width: 54rem; }
+.email-compose > label { display: grid; gap: .35rem; font-weight: 650; }
+.email-compose input:not([type="checkbox"]), .email-compose textarea { width: 100%; padding: .75rem; border: 1px solid #aebdac; border-radius: .5rem; font: inherit; }
+.email-compose fieldset { border: 1px solid #d3ded1; border-radius: .65rem; padding: 1rem; }
+.email-recipients { max-height: 15rem; overflow: auto; margin-top: .75rem; }
+.email-recipient-tools { display: flex; gap: .5rem; }
+.email-preview { max-width: 48rem; max-height: 90vh; overflow: auto; }
+.email-preview p { overflow-wrap: anywhere; }
+.email-message { white-space: pre-wrap; overflow-wrap: anywhere; padding-block: 1rem; }

@@ -10,6 +10,7 @@ const items = [
   { href: "/admin", label: "Schedule", match: (path: string) => path === "/admin" },
   { href: "/admin/users", label: "Users", match: (path: string) => path.startsWith("/admin/users") },
   { href: "/", label: "Volunteer View", match: () => false },
+  { href: "/admin/email", label: "Email", match: (path: string) => path.startsWith("/admin/email") },
   { href: "/admin/history", label: "History", match: (path: string) => path.startsWith("/admin/history") },
   { href: "/admin/settings", label: "Settings", match: (path: string) => path.startsWith("/admin/settings") },
   { href: "/admin/import", label: "Import", match: (path: string) => path.startsWith("/admin/import") },

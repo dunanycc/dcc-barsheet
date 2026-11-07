@@ -336,3 +336,21 @@ model Notification {
   @@index([operationId])
   @@index([recipientEmail, createdAt])
 }
+
+model AdminEmailSettings {
+  id        String   @id @default("singleton")
+  signature String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+model AdminEmail {
+  id          String   @id
+  subject     String
+  message     String
+  signature   String
+  recipients  Json
+  senderName  String
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}

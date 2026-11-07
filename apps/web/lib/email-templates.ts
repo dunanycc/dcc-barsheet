@@ -1,3 +1,4 @@
+import { renderAdminEmail } from "./admin-email";
 const BARSHEET_URL = "https://dcc-barsheet.vercel.app";
 export function escapeHtml(value: unknown) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]!); }
 type Payload = Record<string, unknown>;
@@ -10,6 +11,7 @@ function layout(title: string, greeting: string, paragraphs: string[], facts: Ar
   return { subject: title, text, html };
 }
 export function renderNotification(type: string, payload: Payload): RenderedEmail {
+  if (type === "ADMIN_ALERT" && payload.adminComposed === true) return renderAdminEmail({ subject: string(payload, "subject"), message: string(payload, "message"), signature: string(payload, "signature") });
   const firstName = string(payload, "firstName", "there"); const event = string(payload, "eventName");
   const date = string(payload, "eventDate"); const shift = string(payload, "shiftTime"); const actor = string(payload, "actorName", "a DCC Bar Schedule administrator");
   const facts = [["Event", event], ["Date", date], ["Shift", shift]].filter(([, value]) => Boolean(value)) as Array<[string, string]>;
