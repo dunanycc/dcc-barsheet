@@ -1352,3 +1352,6 @@ input[type="checkbox"] { accent-color: var(--dcc-green); min-height: 1.25rem; mi
 .user-group h2 { font-size: 1.1rem; margin-bottom: .65rem; }
 .trash-button { display: inline-flex; align-items: center; justify-content: center; min-width: 2.25rem; }
 .users-table td[data-label="Email"] { overflow-wrap: anywhere; }
+
+.user-edit-actions { display: flex; flex-wrap: wrap; align-items: center; width: 100%; }
+.user-edit-spacer { flex: 1; }

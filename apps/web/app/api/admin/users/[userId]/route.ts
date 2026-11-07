@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ u
   const access = await authorizeAdminRequest();
   if (!access.ok) return access.response;
   const { userId } = await context.params;
-  const body = (await request.json().catch(() => null)) as { action?: Action; reason?: string; firstName?: string; lastName?: string; email?: string; partnerFirstName?: string; partnerLastName?: string; partnerActive?: boolean } | null;
+  const body = (await request.json().catch(() => null)) as { action?: Action; reason?: string; firstName?: string; lastName?: string; email?: string; partnerFirstName?: string; partnerLastName?: string; partnerActive?: boolean; isAdmin?: boolean } | null;
   const action = body?.action;
   if (!action || !["disable", "enable", "grant_admin", "remove_admin", "hide", "unhide", "update_account"].includes(action)) {
     return NextResponse.json({ error: "Choose a valid user action." }, { status: 400 });
@@ -22,14 +22,28 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ u
       const target = await tx.user.findUnique({ where: { id: userId } });
       if (!target) throw new Error("NOT_FOUND");
       if (action === "update_account") {
+        if (body?.isAdmin !== undefined && typeof body.isAdmin !== "boolean") throw new Error("INVALID");
+        const role = body?.isAdmin === undefined ? target.role : body.isAdmin ? "ADMIN" as const : "MEMBER" as const;
+        const roleChanged = role !== target.role;
+        if (roleChanged && role === "MEMBER") {
+          const activeAdminCount = await tx.user.count({ where: { hiddenAt: null, role: "ADMIN", status: { in: ["APPROVED", "ACTIVE"] } } });
+          assertLastAdminSafe({ targetIsActiveAdmin: !target.hiddenAt && ["APPROVED", "ACTIVE"].includes(target.status), activeAdminCount, removingAdmin: true });
+        }
+
         const firstName=body?.firstName?.trim()||"";const lastName=body?.lastName?.trim()||"";const email=(body?.email||"").normalize("NFKC").trim().toLowerCase();
         if(!firstName||!lastName||!/^\S+@\S+\.\S+$/.test(email))throw new Error("INVALID");
         const duplicate=await tx.user.findFirst({where:{normalizedEmail:email,id:{not:userId}},select:{id:true}});if(duplicate)throw new Error("DUPLICATE_EMAIL");
         const primary=await tx.volunteerProfile.findFirstOrThrow({where:{userId,relationship:"PRIMARY"}});const partner=await tx.volunteerProfile.findFirst({where:{userId,relationship:"PARTNER",active:true}});const emailChanged=email!==target.normalizedEmail;
-        await tx.user.update({where:{id:userId},data:{firstName,lastName,email,normalizedEmail:email,...(emailChanged?{authVersion:{increment:1}}:{})}});await tx.volunteerProfile.update({where:{id:primary.id},data:{firstName,lastName}});
+        await tx.user.update({where:{id:userId},data:{firstName,lastName,email,normalizedEmail:email,role,...(emailChanged||roleChanged?{authVersion:{increment:1}}:{})}});await tx.volunteerProfile.update({where:{id:primary.id},data:{firstName,lastName}});
         const pf=body?.partnerFirstName?.trim()||"";const pl=body?.partnerLastName?.trim()||"";if(body?.partnerActive&&pf&&pl){if(partner)await tx.volunteerProfile.update({where:{id:partner.id},data:{firstName:pf,lastName:pl}});else await tx.volunteerProfile.create({data:{userId,firstName:pf,lastName:pl,relationship:"PARTNER"}});}else if(partner)await tx.volunteerProfile.update({where:{id:partner.id},data:{active:false}});
         if(emailChanged)await tx.externalIdentity.deleteMany({where:{userId}});
         await tx.auditEvent.create({data:{operationId:randomUUID(),actorUserId:access.user.id,actorNameSnapshot:displayName(access.user),actorEmailSnapshot:access.user.normalizedEmail,action:emailChanged?"USER_EMAIL_CHANGED":"USER_PROFILE_ADMIN_UPDATED",entityType:"User",entityId:userId,previousData:{firstName:target.firstName,lastName:target.lastName,email:target.normalizedEmail},newData:{firstName,lastName,email,identitiesUnlinked:emailChanged}}});
+        if (roleChanged) await tx.auditEvent.create({ data: {
+          operationId: randomUUID(), actorUserId: access.user.id,
+          actorNameSnapshot: displayName(access.user), actorEmailSnapshot: access.user.normalizedEmail,
+          action: role === "ADMIN" ? "ADMIN_GRANTED" : "ADMIN_REMOVED", entityType: "User", entityId: userId,
+          previousData: { role: target.role }, newData: { role },
+        } });
         return tx.user.findUniqueOrThrow({where:{id:userId}});
       }
       const activeAdminCount = await tx.user.count({ where: {
