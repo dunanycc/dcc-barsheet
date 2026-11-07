@@ -1,0 +1,31 @@
+# Google clasp credentials (IMPORTANT: Do not commit these!)
+.clasprc.json
+
+# Local Node.js dependencies
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+apps/web/app/generated/prisma/
+
+# Local environment files (keep templates such as .env.example)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel local output
+.vercel/
+
+# System files
+.DS_Store
+Thumbs.db
+
+.env*
+.vercel
+
+# Safe placeholder templates are versioned.
+!.env.example

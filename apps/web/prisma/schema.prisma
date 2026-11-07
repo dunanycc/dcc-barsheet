@@ -1,0 +1,338 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ImportStatus {
+  PREVIEWED
+  APPLIED
+  FAILED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  REMOVED
+  REPLACED
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  DISABLED
+  REJECTED
+}
+
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
+enum VolunteerRelationship {
+  PRIMARY
+  PARTNER
+}
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EventStatus {
+  ACTIVE
+  CANCELLED
+  ARCHIVED
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+enum NotificationType {
+  INITIAL_AUTHORIZATION
+  ACCESS_APPROVED
+  ACCESS_REJECTED
+  ASSIGNMENT_REMOVED
+  ASSIGNMENT_REPLACED
+  VOLUNTEER_REPLACED
+  EVENT_CHANGED
+  EVENT_CANCELLED
+  ADMIN_ALERT
+  SHIFT_FILLED
+  SHIFT_REMOVED
+  EVENT_FILLED
+  TEST_EMAIL
+}
+
+enum IdentityProvider {
+  GOOGLE
+  YAHOO
+  EMAIL_ASSERTION
+}
+
+enum AccessAttemptOutcome {
+  ACCEPTED
+  HONEYPOT_REJECTED
+  IP_RATE_LIMITED
+  EMAIL_RATE_LIMITED
+  COOLDOWN_REJECTED
+  DUPLICATE_PENDING
+}
+
+model User {
+  id                  String             @id @default(uuid())
+  email               String
+  normalizedEmail     String             @unique
+  firstName           String
+  lastName            String
+  status              UserStatus         @default(PENDING)
+  role                UserRole           @default(MEMBER)
+  approvedAt          DateTime?
+  approvedByUserId    String?
+  approvedBy          User?              @relation("UserApprovals", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  approvalsMade       User[]             @relation("UserApprovals")
+  activatedAt         DateTime?
+  lastAuthenticatedAt DateTime?
+  disabledAt          DateTime?
+  disabledReason      String?
+  hiddenAt            DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  authVersion         Int                @default(0)
+  identities          ExternalIdentity[]
+  assignments         ShiftAssignment[]  @relation("AssignedUser")
+  assignmentsCreated  ShiftAssignment[]  @relation("AssignmentCreator")
+  accessRequests      AccessRequest[]    @relation("ApprovedUser")
+  accessDecisions     AccessRequest[]    @relation("AccessRequestDecider")
+  auditEvents         AuditEvent[]
+  volunteerProfiles   VolunteerProfile[]
+
+  @@index([status, role])
+  @@index([hiddenAt])
+  @@index([lastName, firstName])
+}
+
+model VolunteerProfile {
+  id           String                @id @default(uuid())
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  firstName    String
+  lastName     String
+  relationship VolunteerRelationship
+  active       Boolean               @default(true)
+  assignments  ShiftAssignment[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([userId, active])
+  @@index([lastName, firstName])
+}
+
+model ExternalIdentity {
+  id                String           @id @default(uuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  provider          IdentityProvider
+  providerAccountId String
+  verifiedEmail     String
+  createdAt         DateTime         @default(now())
+  lastUsedAt        DateTime?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model AccessRequest {
+  id              String              @id @default(uuid())
+  email           String
+  normalizedEmail String
+  firstName       String
+  lastName        String
+  status          AccessRequestStatus @default(PENDING)
+  pendingKey      String?             @unique
+  operationId     String              @default(uuid())
+  requestedAt     DateTime            @default(now())
+  cooldownUntil   DateTime
+  decidedAt       DateTime?
+  decidedByUserId String?
+  decidedBy       User?               @relation("AccessRequestDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  approvedUserId  String?
+  approvedUser    User?               @relation("ApprovedUser", fields: [approvedUserId], references: [id], onDelete: Restrict)
+  decisionReason  String?
+  requestIp       String?
+  userAgent       String?
+
+  @@index([normalizedEmail, requestedAt])
+  @@index([status, requestedAt])
+}
+
+model AccessRequestAttempt {
+  id              String               @id @default(uuid())
+  normalizedEmail String?
+  ipAddress       String?
+  outcome         AccessAttemptOutcome
+  operationId     String               @default(uuid())
+  createdAt       DateTime             @default(now())
+
+  @@index([ipAddress, createdAt])
+  @@index([normalizedEmail, createdAt])
+}
+
+model ImportBatch {
+  id             String       @id @default(uuid())
+  sourceFileName String
+  sourceHash     String
+  status         ImportStatus
+  eventCount     Int
+  shiftCount     Int
+  signupCount    Int
+  warningCount   Int
+  snapshot       Json
+  createdAt      DateTime     @default(now())
+  appliedAt      DateTime?
+  operationId    String       @default(uuid())
+  events         Event[]
+
+  @@index([createdAt])
+}
+
+model Event {
+  id            String       @id @default(uuid())
+  sourceKey     String       @unique
+  legacyEventId String?
+  date          DateTime     @db.Date
+  name          String
+  notes         String?
+  adminNotes    String?
+  isPrivate     Boolean      @default(false)
+  isLocked      Boolean      @default(false)
+  status        EventStatus  @default(ACTIVE)
+  cancelledAt   DateTime?
+  archivedAt    DateTime?
+  importBatchId String?
+  importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id])
+  shifts        Shift[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([date])
+  @@index([importBatchId])
+}
+
+model Shift {
+  id          String            @id @default(uuid())
+  sourceKey   String            @unique
+  eventId     String
+  event       Event             @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  displayTime String
+  sortMinutes Int
+  capacity    Int
+  isOpen      Boolean           @default(true)
+  assignments ShiftAssignment[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([eventId, sortMinutes])
+}
+
+model ShiftAssignment {
+  id                     String            @id @default(uuid())
+  shiftId                String
+  shift                  Shift             @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  enteredName            String
+  userId                 String?
+  user                   User?             @relation("AssignedUser", fields: [userId], references: [id], onDelete: Restrict)
+  volunteerProfileId     String?
+  volunteerProfile       VolunteerProfile? @relation(fields: [volunteerProfileId], references: [id], onDelete: Restrict)
+  createdByUserId        String?
+  createdBy              User?             @relation("AssignmentCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  operationId            String            @default(uuid())
+  replacedAssignmentId   String?
+  replacedAssignment     ShiftAssignment?  @relation("AssignmentReplacement", fields: [replacedAssignmentId], references: [id], onDelete: Restrict)
+  replacementAssignments ShiftAssignment[] @relation("AssignmentReplacement")
+  sourceSlot             Int?
+  status                 AssignmentStatus  @default(ACTIVE)
+  createdAt              DateTime          @default(now())
+  removedAt              DateTime?
+
+  @@index([shiftId, status])
+  @@index([userId, status])
+  @@index([volunteerProfileId, status])
+  @@index([operationId])
+  @@index([replacedAssignmentId])
+}
+
+model NotificationSettings {
+  id                    String   @id @default("singleton")
+  notifEnabled          Boolean  @default(false)
+  notifShiftFilled      Boolean  @default(true)
+  notifShiftRemoved     Boolean  @default(true)
+  notifEventFilled      Boolean  @default(true)
+  secondaryShiftFilled  Boolean  @default(false)
+  secondaryShiftRemoved Boolean  @default(false)
+  secondaryEventFilled  Boolean  @default(false)
+  toEmail               String?
+  ccEmail               String?
+  updatedAt             DateTime @updatedAt
+}
+
+model AuditEvent {
+  id                 String   @id @default(uuid())
+  operationId        String   @default(uuid())
+  actorUserId        String?
+  actorUser          User?    @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  actorNameSnapshot  String?
+  actorEmailSnapshot String?
+  action             String
+  entityType         String
+  entityId           String?
+  eventId            String?
+  previousData       Json?
+  newData            Json?
+  details            Json?
+  reason             String?
+  ipAddress          String?
+  userAgent          String?
+  createdAt          DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([operationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([eventId, createdAt])
+  @@index([action, createdAt])
+}
+
+model Notification {
+  id                String             @id @default(uuid())
+  operationId       String
+  type              NotificationType
+  status            NotificationStatus @default(PENDING)
+  recipientEmail    String
+  subject           String?
+  payload           Json
+  relatedEntityType String?
+  relatedEntityId   String?
+  eventId           String?
+  attemptCount      Int                @default(0)
+  lastAttemptAt     DateTime?
+  nextAttemptAt     DateTime?
+  claimedAt         DateTime?
+  claimToken        String?            @unique
+  sentAt            DateTime?
+  lastError         String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([status, createdAt])
+  @@index([status, nextAttemptAt, createdAt])
+  @@index([operationId])
+  @@index([recipientEmail, createdAt])
+}
