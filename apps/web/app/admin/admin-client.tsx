@@ -1,5 +1,6 @@
 "use client";
 
+import AdminPageHeading from "./admin-page-heading";
 import { FormEvent, useEffect, useState } from "react";
 import { defaultScheduleYear } from "../../lib/default-schedule-year";
 import { STANDARD_SLOTS } from "../../lib/slot-time";
@@ -665,7 +666,7 @@ export default function AdminClient({ initialTab = "schedule" }: { initialTab?: 
 
       {tab === "settings" ? (
         <div className="settings-section">
-          <div className="page-heading"><h1>Settings</h1><p>Manage email delivery and staffing notifications.</p></div>
+          <AdminPageHeading title="Settings" description="Manage email delivery and staffing notifications." />
           <h3 className="settings-section-title">Notification recipients</h3>
           <div className="settings-box notification-email-grid">
             <div className="form-group">
@@ -710,7 +711,7 @@ export default function AdminClient({ initialTab = "schedule" }: { initialTab?: 
         </div>
       ) : (
         <>
-      <div className="page-heading schedule-heading-row"><div><h1>Schedule</h1><p>Manage events, shifts, and volunteer coverage.</p></div></div>
+      <AdminPageHeading title="Schedule" description="Manage events, shifts, and volunteer coverage." />
 
       <div className="admin-toolbar">
         <span className="admin-summary">

@@ -1445,3 +1445,12 @@ strong, b { font-weight: 600; }
   .auth-card { box-shadow: 0 4px 18px rgb(20 55 30 / 5%); padding: 1.5rem; }
   .auth-card h1 { font-size: 1.85rem; }
 }
+
+/* Admin descriptions appear on demand without taking up a paragraph. */
+.admin-compact-heading { display: flex; align-items: center; gap: .5rem; }
+.admin-heading-help { position: relative; display: inline-flex; }
+.admin-heading-help-button { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 1rem; cursor: help; }
+.admin-heading-help-button:focus-visible { outline: 2px solid var(--dcc-green); outline-offset: 2px; }
+.admin-heading-tooltip { position: absolute; top: 100%; left: -7rem; z-index: 30; width: min(18rem, 75vw); padding: .65rem .8rem; border-radius: .4rem; background: var(--dcc-green-dark); color: #fff; box-shadow: 0 .2rem .6rem rgb(0 0 0 / 15%); font-size: .85rem; font-weight: 400; line-height: 1.45; visibility: hidden; }
+.admin-heading-help:hover .admin-heading-tooltip,
+.admin-heading-help:focus-within .admin-heading-tooltip { visibility: visible; }
