@@ -22,8 +22,8 @@ describe("authenticated application shell", () => {
   it("marks exactly one primary admin destination active", () => {
     const navigation = adminNavigation("/admin/history");
     expect(navigation.filter((item) => item.active)).toEqual([expect.objectContaining({ label: "History" })]);
-    expect(navigation[1]).toEqual(expect.objectContaining({ href: "/admin/users", label: "Users", active: false }));
-    expect(navigation[2]).toEqual(expect.objectContaining({ href: "/", label: "Volunteer View", active: false }));
+    expect(navigation.map((item) => item.label)).toEqual(["Schedule", "Email", "History", "Users", "Settings", "Import"]);
+    expect(navigation[3]).toEqual(expect.objectContaining({ href: "/admin/users", label: "Users", active: false }));
   });
 
   it("keeps responsive structures on dense mobile surfaces", () => {

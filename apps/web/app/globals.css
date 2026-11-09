@@ -1376,6 +1376,7 @@ strong, b { font-weight: 600; }
 .unfilled-col { font-weight: 600; }
 .admin-nav { align-items: center; gap: .75rem; }
 .admin-nav-links { display: flex; flex: 1; gap: 1rem; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.admin-nav-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 1rem; margin-left: auto; }
 .admin-nav-link { min-height: 2.75rem; display: inline-flex; align-items: center; }
 .email-compose > label, .form-group label, .profile-form > label { font-weight: 500; }
 .email-compose fieldset { min-width: 0; }

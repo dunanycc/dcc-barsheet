@@ -8,10 +8,9 @@ import { defaultScheduleYear } from "../../lib/default-schedule-year";
 
 const items = [
   { href: "/admin", label: "Schedule", match: (path: string) => path === "/admin" },
-  { href: "/admin/users", label: "Users", match: (path: string) => path.startsWith("/admin/users") },
-  { href: "/", label: "Volunteer View", match: () => false },
   { href: "/admin/email", label: "Email", match: (path: string) => path.startsWith("/admin/email") },
   { href: "/admin/history", label: "History", match: (path: string) => path.startsWith("/admin/history") },
+  { href: "/admin/users", label: "Users", match: (path: string) => path.startsWith("/admin/users") },
   { href: "/admin/settings", label: "Settings", match: (path: string) => path.startsWith("/admin/settings") },
   { href: "/admin/import", label: "Import", match: (path: string) => path.startsWith("/admin/import") },
 ];
@@ -25,7 +24,7 @@ export default function AdminNav() {
   return <nav aria-label="Administration" className="admin-nav"><div className="admin-nav-links">{adminNavigation(pathname).map((item) => {
     const active = item.active;
     return <Link aria-current={active ? "page" : undefined} className={`admin-nav-link${active ? " active" : ""}`} href={item.href} key={item.href}>{item.label}</Link>;
-  })}</div>{pathname === "/admin" && <AdminScheduleYearPicker />}</nav>;
+  })}</div><div className="admin-nav-actions"><Link className="admin-nav-link" href="/">Volunteer View</Link>{pathname === "/admin" && <AdminScheduleYearPicker />}</div></nav>;
 }
 
 export function AdminScheduleYearPicker() {
